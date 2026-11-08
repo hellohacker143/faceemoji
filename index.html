@@ -1,116 +1,143 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>3D Avatar Shorts Recorder</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090d17"><title>Avatar Studio · Shorts Recorder</title>
 <style>
-:root{color-scheme:dark;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#080d18;color:#f4f7ff}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% 0,#1b2a49,#080d18 65%)}
-header{padding:18px 16px 10px;text-align:center}h1{font-size:clamp(20px,4vw,28px);margin:0}header p{margin:5px 0;color:#9eacc4;font-size:13px}
-main{width:min(100%,560px);margin:0 auto;padding:8px 14px 28px}
-.stage-wrap{width:min(100%,360px);margin:10px auto 16px;padding:7px;border:1px solid #34435e;border-radius:22px;background:#111a2b;box-shadow:0 18px 55px #0008}
-.stage{position:relative;width:100%;aspect-ratio:9/16;overflow:hidden;border-radius:16px;background:#101a30}
+:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#090d17;color:#f4f6fb}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -15%,#293957 0,#111a2b 36%,#090d17 76%)}
+header{max-width:720px;margin:auto;padding:22px 18px 8px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:11px}.mark{width:34px;height:34px;border-radius:11px;background:linear-gradient(145deg,#b5f5e9,#4bbcae);display:grid;place-items:center;color:#06231f;font-weight:900}
+h1{font-size:16px;letter-spacing:.01em;margin:0}.sub{font-size:11px;color:#8f9db4;margin-top:3px;letter-spacing:.09em;text-transform:uppercase}
+.pill{font-size:11px;color:#a9b9ce;border:1px solid #34435b;background:#121d30;padding:7px 10px;border-radius:30px;white-space:nowrap}
+main{width:min(100%,720px);margin:0 auto;padding:10px 16px 30px}
+.studio{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);align-items:center;justify-content:center;gap:24px}
+.frame{width:min(100%,350px);margin:0 auto;padding:6px;border:1px solid #35445e;border-radius:24px;background:#111a2a;box-shadow:0 24px 70px #0008}
+.stage{position:relative;aspect-ratio:9/16;overflow:hidden;border-radius:18px;background:#111a2b}
 #avatarCanvas{display:block;width:100%;height:100%}
-.ratio{position:absolute;top:12px;left:12px;padding:5px 9px;border-radius:20px;background:#07101dcc;border:1px solid #ffffff2b;font-size:11px;letter-spacing:.08em}
-.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-button{border:1px solid #40516e;border-radius:12px;padding:13px 10px;background:#1a2942;color:#fff;font-size:14px;font-weight:700;cursor:pointer}
-button.primary{background:#65e3d1;color:#06201d;border-color:#65e3d1}button.download{grid-column:1/-1;background:#263c5d}
-button:disabled{opacity:.42;cursor:not-allowed}
-.status{text-align:center;color:#aab8cf;font-size:13px;margin:12px 0 5px;min-height:20px}
-.tip{text-align:center;color:#8f9eb6;font-size:12px;line-height:1.5;margin:14px auto;max-width:430px}
+.tag{position:absolute;top:13px;left:13px;padding:6px 9px;border:1px solid #ffffff28;border-radius:30px;background:#08101dc9;color:#e3ebf7;font-size:10px;letter-spacing:.12em}
+.live{position:absolute;right:13px;top:13px;display:flex;align-items:center;gap:6px;padding:6px 9px;border-radius:30px;background:#08101dc9;border:1px solid #ffffff28;color:#dce8f4;font-size:10px}
+.live i{width:6px;height:6px;border-radius:50%;background:#5c6b80}.live.on i{background:#f05e6a;box-shadow:0 0 9px #f05e6a}
+.side{min-width:0}.side h2{font-size:22px;line-height:1.15;margin:0 0 8px}.side p{color:#96a5ba;font-size:13px;line-height:1.55;margin:0 0 18px}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+button{font:600 13px system-ui;border:1px solid #35445c;border-radius:12px;padding:12px 10px;background:#172238;color:#edf4ff;cursor:pointer;min-height:44px}
+button.primary{background:#b4f2e6;color:#09231f;border-color:#b4f2e6}
+button.record{background:#df5968;border-color:#df5968;color:white}
+button.download{grid-column:1/-1;background:#263955}
+button:disabled{opacity:.38;cursor:not-allowed}
+.state{margin-top:13px;min-height:38px;padding:10px 12px;border-radius:12px;background:#111b2c;border:1px solid #283750;color:#b6c5d9;font-size:12px;line-height:1.45}
+.options{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.option{font-size:10px;color:#9fb0c6;border:1px solid #2d3a50;border-radius:30px;padding:6px 9px}
+.note{font-size:11px;color:#74839a;line-height:1.55;margin:17px auto 0;max-width:620px;text-align:center}
 video{position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-10px;top:-10px}
-@media(min-width:700px){main{padding-top:12px}.stage-wrap{width:min(100%,340px)}}
+@media(max-width:650px){header{padding-top:16px}.studio{grid-template-columns:1fr;gap:17px}.frame{width:min(82vw,350px)}.side{max-width:390px;margin:auto;width:100%}.side h2,.side>p{text-align:center}.side h2{font-size:19px}.side>p{margin-bottom:13px}}
 </style>
 </head>
 <body>
-<header><h1>3D Avatar Shorts Recorder</h1><p>Live face movement · Lip motion · Vertical video</p></header>
+<header><div class="brand"><div class="mark">A</div><div><h1>AVATAR STUDIO</h1><div class="sub">3D creator · Shorts edition</div></div></div><span class="pill">PORTRAIT 9:16</span></header>
 <main>
-  <div class="stage-wrap"><div class="stage"><canvas id="avatarCanvas"></canvas><span class="ratio">9:16 · YOUTUBE SHORTS</span></div></div>
+<section class="studio">
+ <div class="frame"><div class="stage"><canvas id="avatarCanvas"></canvas><span class="tag">3D AVATAR</span><span class="live" id="liveBadge"><i></i><span id="liveText">STANDBY</span></span></div></div>
+ <div class="side">
+  <h2>Your virtual presenter.</h2><p>Speak naturally. Your avatar follows your head, blinks, and moves its mouth from your live microphone audio.</p>
   <div class="controls">
-    <button class="primary" id="cameraBtn">Start Face Tracking</button>
-    <button id="stopCameraBtn" disabled>Stop Camera</button>
-    <button class="primary" id="recordBtn" disabled>● Start Recording</button>
-    <button id="stopRecordBtn" disabled>Stop & Save Video</button>
-    <button class="download" id="downloadBtn" disabled>Download Last Recording</button>
+   <button class="primary" id="cameraBtn">Enable Camera + Mic</button>
+   <button id="stopCameraBtn" disabled>Stop Tracking</button>
+   <button class="record" id="recordBtn" disabled>● Record Short</button>
+   <button id="stopRecordBtn" disabled>Finish Recording</button>
+   <button class="download" id="downloadBtn" disabled>↓ Download Video</button>
   </div>
-  <div class="status" id="status">Start face tracking to control your 3D avatar.</div>
-  <p class="tip">The exported video records only the 3D avatar in 9:16 portrait format (1080 × 1920). Your camera is used privately for face tracking and is not shown in the video. Keep this page open while recording.</p>
+  <div class="state" id="status">Allow camera and microphone access to begin. Only the avatar and your microphone audio are included in the recording.</div>
+  <div class="options"><span class="option">1080 × 1920</span><span class="option">30 FPS</span><span class="option">Live voice</span><span class="option">Avatar only</span></div>
+ </div>
+</section>
+<p class="note">Camera video is processed in your browser and is never added to the exported video. Microphone audio is included so your voice is heard with the avatar. Export format depends on browser support (usually WebM).</p>
 </main>
 <video id="inputVideo" autoplay muted playsinline></video>
 <script type="module">
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import {FaceLandmarker,FilesetResolver} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
-
-const canvas=document.querySelector("#avatarCanvas"),video=document.querySelector("#inputVideo");
-const statusEl=document.querySelector("#status"),cameraBtn=document.querySelector("#cameraBtn");
-const stopCameraBtn=document.querySelector("#stopCameraBtn"),recordBtn=document.querySelector("#recordBtn");
-const stopRecordBtn=document.querySelector("#stopRecordBtn"),downloadBtn=document.querySelector("#downloadBtn");
-const scene=new THREE.Scene();scene.background=new THREE.Color("#101a30");
-scene.fog=new THREE.Fog("#101a30",8,18);
-const camera=new THREE.PerspectiveCamera(30,9/16,.1,100);camera.position.set(0,0,8.8);
-const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,preserveDrawingBuffer:false});
-renderer.setPixelRatio(1);renderer.setSize(1080,1920,false);renderer.outputColorSpace=THREE.SRGBColorSpace;
-renderer.setClearColor("#101a30",1);
-scene.add(new THREE.HemisphereLight(0xe6f2ff,0x37415e,2.1));
-const key=new THREE.DirectionalLight(0xffe2c8,2.5);key.position.set(-3,5,7);scene.add(key);
-const rim=new THREE.DirectionalLight(0x5eead4,2.1);rim.position.set(4,1,-3);scene.add(rim);
-const fill=new THREE.PointLight(0x6c8dff,1.3,15);fill.position.set(0,-2,5);scene.add(fill);
-
-// Soft studio backdrop and floor glow
-const halo=new THREE.Mesh(new THREE.CircleGeometry(2.7,64),new THREE.MeshBasicMaterial({color:0x1d3152,transparent:true,opacity:.65}));
-halo.position.set(0,.15,-2.2);scene.add(halo);
-const avatar=new THREE.Group();scene.add(avatar);
-const skin=new THREE.MeshStandardMaterial({color:0xe8b995,roughness:.72});
-const hairMat=new THREE.MeshStandardMaterial({color:0x20202a,roughness:.92});
-const white=new THREE.MeshStandardMaterial({color:0xf8fbff,roughness:.3});
-const irisMat=new THREE.MeshStandardMaterial({color:0x387f83,roughness:.28});
-const pupilMat=new THREE.MeshStandardMaterial({color:0x101827,roughness:.3});
-const browMat=new THREE.MeshStandardMaterial({color:0x30252a,roughness:.9});
-const mouthMat=new THREE.MeshStandardMaterial({color:0x641f32,roughness:.8});
-const lipMat=new THREE.MeshStandardMaterial({color:0xb96e72,roughness:.7});
-function ball(parent,mat,pos,scale){const m=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),mat);m.position.set(...pos);m.scale.set(...scale);parent.add(m);return m}
-const headGroup=new THREE.Group();avatar.add(headGroup);
-const head=ball(headGroup,skin,[0,.35,0],[1.12,1.43,.91]);
-const hairCap=new THREE.Mesh(new THREE.SphereGeometry(1,48,32,0,Math.PI*2,0,Math.PI*.56),hairMat);
-hairCap.scale.set(1.15,.9,.96);hairCap.position.set(0,1.18,-.02);headGroup.add(hairCap);
-// hair fringe
-ball(headGroup,hairMat,[0,1.18,.65],[.85,.25,.28]);
+const $=s=>document.querySelector(s),canvas=$("#avatarCanvas"),video=$("#inputVideo"),statusEl=$("#status");
+const cameraBtn=$("#cameraBtn"),stopCameraBtn=$("#stopCameraBtn"),recordBtn=$("#recordBtn"),stopRecordBtn=$("#stopRecordBtn"),downloadBtn=$("#downloadBtn");
+const scene=new THREE.Scene();scene.background=new THREE.Color("#101a2b");scene.fog=new THREE.Fog("#101a2b",9,18);
+const camera=new THREE.PerspectiveCamera(29,9/16,.1,100);camera.position.set(0,.15,8.4);
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
+renderer.setPixelRatio(1);renderer.setSize(1080,1920,false);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.setClearColor("#101a2b",1);
+scene.add(new THREE.HemisphereLight(0xeaf2ff,0x33364c,2.0));
+const key=new THREE.DirectionalLight(0xffe2cb,2.7);key.position.set(-3,5,6);scene.add(key);
+const fill=new THREE.DirectionalLight(0x9bbcff,1.2);fill.position.set(4,1,4);scene.add(fill);
+const rim=new THREE.DirectionalLight(0x58d8c8,2.4);rim.position.set(2,2,-4);scene.add(rim);
+const halo=new THREE.Mesh(new THREE.CircleGeometry(2.7,64),new THREE.MeshBasicMaterial({color:0x20344d,transparent:true,opacity:.8}));halo.position.set(0,.15,-2.2);scene.add(halo);
+const avatar=new THREE.Group();scene.add(avatar);avatar.position.y=-.22;
+const skin=new THREE.MeshStandardMaterial({color:0xd9a982,roughness:.78});
+const skinLight=new THREE.MeshStandardMaterial({color:0xe4b994,roughness:.72});
+const hairMat=new THREE.MeshStandardMaterial({color:0x171923,roughness:.92});
+const white=new THREE.MeshStandardMaterial({color:0xf7f8fa,roughness:.3});
+const irisMat=new THREE.MeshStandardMaterial({color:0x493c35,roughness:.3});
+const pupilMat=new THREE.MeshStandardMaterial({color:0x11131b,roughness:.25});
+const browMat=new THREE.MeshStandardMaterial({color:0x30242a,roughness:.95});
+const mouthMat=new THREE.MeshStandardMaterial({color:0x521d2a,roughness:.8});
+const lipMat=new THREE.MeshStandardMaterial({color:0x9f5b5c,roughness:.72});
+function ball(parent,mat,pos,scale,seg=40){const m=new THREE.Mesh(new THREE.SphereGeometry(1,seg,32),mat);m.position.set(...pos);m.scale.set(...scale);parent.add(m);return m}
+const headRig=new THREE.Group();avatar.add(headRig);
+ball(headRig,skinLight,[0,.48,0],[1.03,1.36,.86],64);
+// jaw/chin gives a softer human face silhouette
+ball(headRig,skinLight,[0,-.18,.19],[.78,.61,.73],48);
+const hairCap=new THREE.Mesh(new THREE.SphereGeometry(1,64,40,0,Math.PI*2,0,Math.PI*.58),hairMat);hairCap.scale.set(1.08,.9,.94);hairCap.position.set(0,1.22,-.015);headRig.add(hairCap);
+ball(headRig,hairMat,[0,1.18,.62],[.83,.22,.28]);
+ball(headRig,hairMat,[-.72,.93,.1],[.22,.48,.62]);ball(headRig,hairMat,[.72,.93,.1],[.22,.48,.62]);
 const eyeParts=[];
-for(const x of [-.43,.43]){
- ball(headGroup,white,[x,.48,.78],[.25,.17,.11]);
- const iris=ball(headGroup,irisMat,[x,.47,.875],[.105,.115,.045]);
- ball(headGroup,pupilMat,[x,.47,.912],[.05,.06,.025]);
- const lid=ball(headGroup,skin,[x,.49,.94],[.255,.012,.035]);
- const brow=ball(headGroup,browMat,[x,.79,.77],[.29,.065,.09]);
- eyeParts.push({lid,iris,brow});
+for(const x of [-.4,.4]){
+ ball(headRig,skin,[x,.52,.735],[.275,.19,.11]);
+ ball(headRig,white,[x,.51,.79],[.215,.125,.09]);
+ const iris=ball(headRig,irisMat,[x,.505,.868],[.083,.09,.035]);
+ ball(headRig,pupilMat,[x,.505,.897],[.039,.047,.02]);
+ ball(headRig,white,[x-.025,.54,.914],[.018,.02,.009]);
+ const lid=ball(headRig,skinLight,[x,.64,.88],[.22,.012,.035]);
+ ball(headRig,browMat,[x,.79,.77],[.25,.045,.065]);
+ eyeParts.push({lid});
 }
-ball(headGroup,skin,[0,.15,.91],[.16,.31,.2]);
-ball(headGroup,skin,[0,-.04,1.0],[.2,.13,.17]);
-const mouth=ball(headGroup,mouthMat,[0,-.48,.83],[.29,.025,.055]);
-const lowerLip=ball(headGroup,lipMat,[0,-.51,.875],[.22,.018,.025]);
-for(const x of [-1.08,1.08])ball(headGroup,skin,[x,.18,.02],[.19,.32,.2]);
-const neck= new THREE.Mesh(new THREE.CylinderGeometry(.34,.43,.72,32),skin);neck.position.set(0,-1.15,0);avatar.add(neck);
-const shirtMat=new THREE.MeshStandardMaterial({color:0x263e69,roughness:.85});
-const torso=ball(avatar,shirtMat,[0,-1.95,-.05],[1.36,.92,.65]);
-const collar= new THREE.Mesh(new THREE.ConeGeometry(.34,.46,4),new THREE.MeshStandardMaterial({color:0xe8edf7,roughness:.8}));
-collar.rotation.y=Math.PI/4;collar.position.set(0,-1.42,.52);avatar.add(collar);
-avatar.position.y=-.1;
+// nose bridge and tip
+ball(headRig,skinLight,[0,.28,.81],[.105,.27,.13]);
+ball(headRig,skin,[0,.13,.91],[.15,.105,.13]);
+ball(headRig,skin,[-.12,.11,.88],[.07,.055,.06]);ball(headRig,skin,[.12,.11,.88],[.07,.055,.06]);
+// mouth with inner cavity, upper/lower lip movement
+const mouth=ball(headRig,mouthMat,[0,-.25,.82],[.235,.018,.045]);
+const upperLip=ball(headRig,lipMat,[0,-.225,.858],[.23,.025,.025]);
+const lowerLip=ball(headRig,lipMat,[0,-.28,.858],[.21,.018,.025]);
+ball(headRig,skin,[-.98,.15,0],[.17,.28,.19]);ball(headRig,skin,[.98,.15,0],[.17,.28,.19]);
+const neck=new THREE.Mesh(new THREE.CylinderGeometry(.31,.39,.68,40),skin);neck.position.set(0,-.98,-.04);avatar.add(neck);
+const jacketMat=new THREE.MeshStandardMaterial({color:0x26364d,roughness:.88});
+ball(avatar,jacketMat,[0,-1.8,-.04],[1.18,.78,.56]);
+const shirt=new THREE.Mesh(new THREE.ConeGeometry(.27,.48,4),new THREE.MeshStandardMaterial({color:0xe6e9ed,roughness:.9}));shirt.rotation.y=Math.PI/4;shirt.position.set(0,-1.29,.47);avatar.add(shirt);
+const lapelMat=new THREE.MeshStandardMaterial({color:0x344966,roughness:.9});
+const lapel1=new THREE.Mesh(new THREE.ConeGeometry(.18,.55,3),lapelMat);lapel1.rotation.set(0,0,-.42);lapel1.position.set(-.25,-1.55,.49);avatar.add(lapel1);
+const lapel2=lapel1.clone();lapel2.rotation.z=.42;lapel2.position.x=.25;avatar.add(lapel2);
 
-let targetYaw=0,targetPitch=0,targetRoll=0,targetMouth=0,blinkL=0,blinkR=0;
-let landmarker=null,stream=null,raf=0,lastVideoTime=-1,recorder=null,recordedBlob=null,recordedUrl=null,recordedChunks=[];
+let targetYaw=0,targetPitch=0,targetRoll=0,faceMouth=0,micMouth=0,blinkL=0,blinkR=0;
+let landmarker=null,stream=null,raf=0,lastVideoTime=-1,recorder=null,recordedUrl=null,chunks=[];
+let audioContext=null,analyser=null,micSource=null,audioData=null,micTrack=null;
 function blend(cats,name){return cats?.find(x=>x.categoryName===name)?.score??0}
-function smooth(obj,key,target,speed=.16){obj[key]+=(target-obj[key])*speed}
-function draw(){
- requestAnimationFrame(draw);
- smooth(avatar.rotation,"y",targetYaw,.13);smooth(headGroup.rotation,"x",targetPitch,.13);smooth(headGroup.rotation,"z",targetRoll,.13);
- smooth(mouth.scale,"y",.025+targetMouth*.28,.25);
- smooth(mouth.scale,"x",.29+targetMouth*.025,.2);
- eyeParts.forEach((e,i)=>{const b=i===0?blinkL:blinkR;smooth(e.lid.scale,"y",.012+b*.18,.32);smooth(e.lid.position,"y",.49-b*.07,.32)});
- avatar.position.y=-.1+Math.sin(performance.now()*.0012)*.025;
+function lerp(obj,key,target,speed=.18){obj[key]+=(target-obj[key])*speed}
+function render(){
+ requestAnimationFrame(render);
+ lerp(avatar.rotation,"y",targetYaw,.13);lerp(headRig.rotation,"x",targetPitch,.13);lerp(headRig.rotation,"z",targetRoll,.13);
+ const open=Math.max(faceMouth,micMouth*.95);
+ lerp(mouth.scale,"y",.018+open*.18,.32);
+ lerp(upperLip.position,"y",-.225+open*.025,.28);
+ lerp(lowerLip.position,"y",-.28-open*.09,.28);
+ eyeParts.forEach((e,i)=>{const b=i===0?blinkL:blinkR;lerp(e.lid.scale,"y",.012+b*.16,.3);lerp(e.lid.position,"y",.64-b*.11,.3)});
+ avatar.position.y=-.22+Math.sin(performance.now()*.0011)*.018;
  renderer.render(scene,camera);
 }
-draw();
+render();
+function readMic(){
+ if(!analyser||!audioData){micMouth*=.8;return}
+ analyser.getByteTimeDomainData(audioData);
+ let sum=0;for(let i=0;i<audioData.length;i++){const v=(audioData[i]-128)/128;sum+=v*v}
+ const rms=Math.sqrt(sum/audioData.length);
+ const gate=Math.max(0,(rms-.012)*17);
+ micMouth=Math.max(0,Math.min(1,gate));
+}
 async function setupModel(){
  if(landmarker)return;
  statusEl.textContent="Loading face tracking model…";
@@ -120,64 +147,69 @@ async function setupModel(){
 async function startCamera(){
  try{
   cameraBtn.disabled=true;await setupModel();
-  stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:"user",width:{ideal:1280},height:{ideal:720}}});
-  video.srcObject=stream;await video.play();lastVideoTime=-1;
-  stopCameraBtn.disabled=false;recordBtn.disabled=false;statusEl.textContent="Face tracking is live. Move your face and press Start Recording.";
-  predict();
- }catch(e){console.error(e);cameraBtn.disabled=false;statusEl.textContent="Camera/model error: "+e.message;alert("Allow camera permission and open this site using HTTPS.");}
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:1280},height:{ideal:720}},audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+  video.srcObject=stream;await video.play();micTrack=stream.getAudioTracks()[0]||null;
+  if(micTrack){
+   audioContext=new (window.AudioContext||window.webkitAudioContext)();
+   await audioContext.resume();micSource=audioContext.createMediaStreamSource(new MediaStream([micTrack]));
+   analyser=audioContext.createAnalyser();analyser.fftSize=1024;analyser.smoothingTimeConstant=.68;
+   micSource.connect(analyser);audioData=new Uint8Array(analyser.fftSize);
+  }
+  lastVideoTime=-1;stopCameraBtn.disabled=false;recordBtn.disabled=false;
+  statusEl.textContent=micTrack?"Camera and microphone ready. Speak to animate the avatar's lips.":"Camera ready, but microphone was not detected.";
+  $("#liveBadge").classList.add("on");$("#liveText").textContent="TRACKING";predict();
+ }catch(e){console.error(e);cameraBtn.disabled=false;statusEl.textContent="Could not start camera/microphone: "+e.message;alert("Please allow both camera and microphone permissions, then reload the page over HTTPS.");}
 }
 function predict(){
  if(!stream)return;
+ readMic();
  if(video.readyState>=2&&video.currentTime!==lastVideoTime){
-  lastVideoTime=video.currentTime;
-  const result=landmarker.detectForVideo(video,performance.now());
+  lastVideoTime=video.currentTime;const result=landmarker.detectForVideo(video,performance.now());
   if(result.faceLandmarks?.length){
-   const p=result.faceLandmarks[0],a=p[33],b=p[263],n=p[1],chin=p[152];
-   const mid=(a.x+b.x)/2,eyeW=Math.max(.001,Math.abs(b.x-a.x));
-   const yaw=Math.max(-.7,Math.min(.7,(n.x-mid)/eyeW*1.15));
-   const pitch=Math.max(-.4,Math.min(.4,((n.y-(a.y+b.y)/2)/Math.max(.001,chin.y-(a.y+b.y)/2)-.35)*1.25));
-   const roll=Math.max(-.55,Math.min(.55,Math.atan2(b.y-a.y,b.x-a.x)));
-   targetYaw=-yaw;targetPitch=pitch;targetRoll=roll;
-   const cats=result.faceBlendshapes?.[0]?.categories;
-   targetMouth=Math.max(0,Math.min(1,blend(cats,"jawOpen")));
+   const p=result.faceLandmarks[0],a=p[33],b=p[263],n=p[1],chin=p[152],mid=(a.x+b.x)/2,eyeW=Math.max(.001,Math.abs(b.x-a.x));
+   targetYaw=Math.max(-.65,Math.min(.65,-(n.x-mid)/eyeW*1.1));
+   targetPitch=Math.max(-.35,Math.min(.35,((n.y-(a.y+b.y)/2)/Math.max(.001,chin.y-(a.y+b.y)/2)-.35)*1.1));
+   targetRoll=Math.max(-.5,Math.min(.5,Math.atan2(b.y-a.y,b.x-a.x)));
+   const cats=result.faceBlendshapes?.[0]?.categories;faceMouth=Math.max(0,Math.min(1,blend(cats,"jawOpen")));
    blinkL=blend(cats,"eyeBlinkLeft");blinkR=blend(cats,"eyeBlinkRight");
-  }else{targetYaw*=.92;targetPitch*=.92;targetRoll*=.92;targetMouth*=.85;blinkL*=.8;blinkR*=.8}
+  }else{targetYaw*=.92;targetPitch*=.92;targetRoll*=.92;faceMouth*=.8;blinkL*=.8;blinkR*=.8}
  }
  raf=requestAnimationFrame(predict);
 }
 function stopCamera(){
  if(raf)cancelAnimationFrame(raf);raf=0;
- if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;
+ if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;micTrack=null;
+ if(audioContext){audioContext.close().catch(()=>{});audioContext=null}analyser=null;micSource=null;audioData=null;
  cameraBtn.disabled=false;stopCameraBtn.disabled=true;recordBtn.disabled=true;
- targetYaw=targetPitch=targetRoll=targetMouth=blinkL=blinkR=0;
- statusEl.textContent="Camera stopped.";
+ targetYaw=targetPitch=targetRoll=faceMouth=micMouth=blinkL=blinkR=0;
+ $("#liveBadge").classList.remove("on");$("#liveText").textContent="STANDBY";
+ statusEl.textContent="Tracking stopped.";
 }
 function startRecording(){
- if(!canvas.captureStream||!window.MediaRecorder){statusEl.textContent="Video recording is not supported in this browser.";return}
- const capture=canvas.captureStream(30);
- const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(t=>MediaRecorder.isTypeSupported(t));
- if(!mime){statusEl.textContent="WebM recording is not supported by this browser.";return}
- recordedChunks=[];recorder=new MediaRecorder(capture,{mimeType:mime,videoBitsPerSecond:8000000});
- recorder.ondataavailable=e=>{if(e.data.size)recordedChunks.push(e.data)};
+ if(!stream||!canvas.captureStream||!window.MediaRecorder){statusEl.textContent="Start tracking first. This browser must support video recording.";return}
+ const videoStream=canvas.captureStream(30),combined=new MediaStream([...videoStream.getVideoTracks(),...(stream.getAudioTracks())]);
+ const mime=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"].find(t=>MediaRecorder.isTypeSupported(t));
+ if(!mime){statusEl.textContent="This browser does not support a compatible recording format.";return}
+ chunks=[];recorder=new MediaRecorder(combined,{mimeType:mime,videoBitsPerSecond:8000000,audioBitsPerSecond:128000});
+ recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
+ recorder.onerror=e=>{statusEl.textContent="Recording error: "+(e.error?.message||"unknown error")};
  recorder.onstop=()=>{
-  recordedBlob=new Blob(recordedChunks,{type:mime});if(recordedUrl)URL.revokeObjectURL(recordedUrl);
-  recordedUrl=URL.createObjectURL(recordedBlob);downloadBtn.disabled=false;
-  statusEl.textContent="Recording ready. Tap Download Last Recording to save your 9:16 avatar video.";
-  capture.getTracks().forEach(t=>t.stop());
+  const blob=new Blob(chunks,{type:mime});if(recordedUrl)URL.revokeObjectURL(recordedUrl);
+  recordedUrl=URL.createObjectURL(blob);downloadBtn.disabled=false;
+  statusEl.textContent="Your avatar Short is ready. Download the video below.";
+  videoStream.getTracks().forEach(t=>t.stop());
  };
- recorder.start(250);recordBtn.disabled=true;stopRecordBtn.disabled=false;
- statusEl.textContent="🔴 Recording your 3D avatar…";
+ recorder.start(300);recordBtn.disabled=true;stopRecordBtn.disabled=false;
+ $("#liveText").textContent="RECORDING";statusEl.textContent="Recording avatar and live microphone audio…";
 }
 function stopRecording(){
- if(recorder&&recorder.state!=="inactive"){recorder.stop();stopRecordBtn.disabled=true;recordBtn.disabled=false}
+ if(recorder&&recorder.state!=="inactive"){recorder.stop();stopRecordBtn.disabled=true;recordBtn.disabled=false;$("#liveText").textContent="TRACKING"}
 }
 function downloadRecording(){
- if(!recordedUrl)return;
- const a=document.createElement("a");a.href=recordedUrl;a.download="3d-avatar-youtube-short.webm";document.body.appendChild(a);a.click();a.remove();
+ if(!recordedUrl)return;const a=document.createElement("a");a.href=recordedUrl;a.download="avatar-studio-youtube-short.webm";document.body.appendChild(a);a.click();a.remove();
 }
-cameraBtn.addEventListener("click",startCamera);stopCameraBtn.addEventListener("click",stopCamera);
+cameraBtn.addEventListener("click",startCamera);stopCameraBtn.addEventListener("click",()=>{if(recorder&&recorder.state!=="inactive")stopRecording();stopCamera()});
 recordBtn.addEventListener("click",startRecording);stopRecordBtn.addEventListener("click",stopRecording);downloadBtn.addEventListener("click",downloadRecording);
-window.addEventListener("beforeunload",()=>{stopRecording();stopCamera();if(recordedUrl)URL.revokeObjectURL(recordedUrl)});
+window.addEventListener("beforeunload",()=>{if(recorder&&recorder.state!=="inactive")recorder.stop();if(stream)stream.getTracks().forEach(t=>t.stop());if(recordedUrl)URL.revokeObjectURL(recordedUrl)});
 </script>
-</body>
-</html>
+</body></html>
