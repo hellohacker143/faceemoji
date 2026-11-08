@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MediaPipe Human Face – Live 9:16 Recorder</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:#0f1114;color:#eceef1;font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;display:flex;flex-direction:column;align-items:center;gap:12px;padding:12px}
+.stage{position:relative;height:min(78vh,calc((100vw - 24px) * 16 / 9));aspect-ratio:9/16;border-radius:16px;overflow:hidden;background:#000;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+canvas{width:100%;height:100%;display:block}
+#hud{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;padding:12px;pointer-events:none;font-size:.85rem}
+#rec{background:rgba(0,0,0,.55);padding:5px 10px;border-radius:20px;display:none;align-items:center;gap:6px}
+#rec i{width:9px;height:9px;border-radius:50%;background:#ff3b30;animation:b 1s infinite}
+@keyframes b{50%{opacity:.2}}
+#status{position:absolute;left:12px;right:12px;bottom:14px;text-align:center;background:rgba(0,0,0,.6);padding:8px 12px;border-radius:12px;font-size:.9rem}
+.bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:420px}
+button{font:inherit;font-size:.92rem;padding:10px 14px;border-radius:10px;border:1px solid #4a4f58;background:#1c1f25;color:#eceef1;cursor:pointer}
+button.primary{background:#2f6bff;border-color:#2f6bff}
+button.danger{background:#e5382d;border-color:#e5382d}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible{outline:2px solid #8ab4ff;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="stage">
+  <canvas id="c" width="720" height="1280"></canvas>
+  <div id="hud"><span id="rec"><i></i><b id="t">00:00</b></span></div>
+  <div id="status">Press “Start camera” to begin live capture.</div>
+</div>
+<div class="bar">
+  <button id="start" class="primary">Start camera</button>
+  <button id="mode" disabled>View: Face shape</button>
+  <button id="skin" disabled>Skin tone</button>
+  <button id="rbtn" disabled>● Record</button>
+  <button id="dl" disabled>Download</button>
+</div>
+<video id="v" playsinline muted style="display:none"></video>
+
+<script type="module">
+import {FaceLandmarker, FilesetResolver} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+const W=720,H=1280;
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+const vid=document.getElementById('v'), $=id=>document.getElementById(id);
+const status=$('status');
+let landmarker=null, running=false, faceMode=true, lastT=-1, lm=null;
+const tr={s:1,tx:0,ty:0,init:false};
+
+const SKINS=[["#f3cfb3","#e0ab88","#b98462"],["#e2b08b","#c98f69","#a26e4d"],["#c48a64","#a56c47","#7f4f35"],["#8d5a3e","#704531","#4d2d1f"]];
+let skinI=0;
+
+const OVAL=FaceLandmarker.FACE_LANDMARKS_FACE_OVAL.map(c=>c.start);
+const L_EYE=FaceLandmarker.FACE_LANDMARKS_LEFT_EYE.map(c=>c.start);
+const R_EYE=FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE.map(c=>c.start);
+const L_BROW=FaceLandmarker.FACE_LANDMARKS_LEFT_EYEBROW.map(c=>c.start);
+const R_BROW=FaceLandmarker.FACE_LANDMARKS_RIGHT_EYEBROW.map(c=>c.start);
+const LIP_O=[61,146,91,181,84,17,314,405,321,375,291,409,270,269,267,0,37,39,40,185];
+const LIP_I=[78,95,88,178,87,14,317,402,318,324,308,415,310,311,312,13,82,81,80,191];
+const TESS=FaceLandmarker.FACE_LANDMARKS_TESSELATION;
+
+const pt=i=>{const p=lm[i];return [(1-p.x)*vid.videoWidth*tr.s+tr.tx, p.y*vid.videoHeight*tr.s+tr.ty]};
+const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+function poly(ids){ctx.beginPath();ids.forEach((id,k)=>{const [x,y]=pt(id);k?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.closePath()}
+function line(ids){ctx.beginPath();ids.forEach((id,k)=>{const [x,y]=pt(id);k?ctx.lineTo(x,y):ctx.moveTo(x,y)})}
+
+function updateTransform(){
+  const vw=vid.videoWidth, vh=vid.videoHeight; if(!vw)return;
+  let s,tx,ty;
+  if(faceMode&&lm){
+    let minx=1e9,maxx=-1e9,miny=1e9,maxy=-1e9;
+    OVAL.forEach(i=>{const x=(1-lm[i].x)*vw,y=lm[i].y*vh;minx=Math.min(minx,x);maxx=Math.max(maxx,x);miny=Math.min(miny,y);maxy=Math.max(maxy,y)});
+    s=W*0.62/(maxx-minx); tx=W/2-((minx+maxx)/2)*s; ty=H*0.42-((miny+maxy)/2)*s;
+  }else{
+    s=Math.max(W/vw,H/vh); tx=(W-vw*s)/2; ty=(H-vh*s)/2;
+  }
+  const k=tr.init&&faceMode?0.18:1;
+  tr.s+=(s-tr.s)*k; tr.tx+=(tx-tr.tx)*k; tr.ty+=(ty-tr.ty)*k; tr.init=true;
+}
+
+function drawBackground(){
+  const g=ctx.createRadialGradient(W/2,0,50,W/2,H*.4,H*.9);
+  g.addColorStop(0,"#8d939c");g.addColorStop(.45,"#464a51");g.addColorStop(1,"#17191c");
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+}
+
+function drawHuman(){
+  const [c1,c2,c3]=SKINS[skinI];
+  const fw=dist(pt(234),pt(454)), top=pt(10), chin=pt(152), mid=[(top[0]+chin[0])/2,(top[1]+chin[1])/2];
+  ctx.fillStyle="#22252b";ctx.beginPath();ctx.ellipse(chin[0],chin[1]+fw*1.35,fw*1.55,fw*0.75,0,0,Math.PI*2);ctx.fill();
+  const nl=pt(172),nr=pt(397);
+  const ng=ctx.createLinearGradient(nl[0],0,nr[0],0);ng.addColorStop(0,c3);ng.addColorStop(.5,c2);ng.addColorStop(1,c3);
+  ctx.fillStyle=ng;ctx.beginPath();ctx.moveTo(nl[0]+fw*.06,chin[1]-fw*.3);ctx.lineTo(nr[0]-fw*.06,chin[1]-fw*.3);
+  ctx.lineTo(nr[0]-fw*.02,chin[1]+fw*.75);ctx.lineTo(nl[0]+fw*.02,chin[1]+fw*.75);ctx.closePath();ctx.fill();
+  const sh=ctx.createLinearGradient(0,chin[1]-fw*.2,0,chin[1]+fw*.4);sh.addColorStop(0,"rgba(60,30,22,.55)");sh.addColorStop(1,"rgba(60,30,22,0)");
+  ctx.fillStyle=sh;ctx.fillRect(nl[0],chin[1]-fw*.2,nr[0]-nl[0],fw*.6);
+  ctx.fillStyle="#f6f7f9";ctx.beginPath();ctx.moveTo(nl[0]-fw*.15,chin[1]+fw*.55);ctx.lineTo(chin[0],chin[1]+fw*1.0);ctx.lineTo(nr[0]+fw*.15,chin[1]+fw*.55);ctx.lineTo(nr[0]+fw*.4,chin[1]+fw*1.6);ctx.lineTo(nl[0]-fw*.4,chin[1]+fw*1.6);ctx.closePath();ctx.fill();
+
+  ctx.save();
+  ctx.shadowColor="rgba(0,0,0,.35)";ctx.shadowBlur=fw*.08;ctx.shadowOffsetY=fw*.03;
+  const fg=ctx.createRadialGradient(mid[0]-fw*.08,mid[1]-fw*.15,fw*.1,mid[0],mid[1],fw*.75);
+  fg.addColorStop(0,c1);fg.addColorStop(.6,c2);fg.addColorStop(1,c3);
+  poly(OVAL);ctx.fillStyle=fg;ctx.fill();
+  ctx.restore();
+  ctx.save();poly(OVAL);ctx.clip();
+  let g=ctx.createRadialGradient(top[0],top[1]+fw*.22,0,top[0],top[1]+fw*.22,fw*.4);g.addColorStop(0,"rgba(255,255,255,.28)");g.addColorStop(1,"rgba(255,255,255,0)");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  [205,425].forEach(i=>{const p=pt(i);const b=ctx.createRadialGradient(p[0],p[1],0,p[0],p[1],fw*.2);b.addColorStop(0,"rgba(201,119,106,.28)");b.addColorStop(1,"rgba(201,119,106,0)");ctx.fillStyle=b;ctx.fillRect(p[0]-fw,p[1]-fw,fw*2,fw*2)});
+  [234,454].forEach(i=>{const p=pt(i);const b=ctx.createRadialGradient(p[0],p[1],0,p[0],p[1],fw*.35);b.addColorStop(0,"rgba(70,35,25,.4)");b.addColorStop(1,"rgba(70,35,25,0)");ctx.fillStyle=b;ctx.fillRect(p[0]-fw,p[1]-fw,fw*2,fw*2)});
+  const cs=pt(152);const cg=ctx.createRadialGradient(cs[0],cs[1]-fw*.1,0,cs[0],cs[1]-fw*.1,fw*.5);cg.addColorStop(0,"rgba(40,25,20,0)");cg.addColorStop(1,"rgba(40,25,20,.18)");ctx.fillStyle=cg;ctx.fillRect(0,0,W,H);
+  ctx.restore();
+
+  [[L_EYE,473],[R_EYE,468]].forEach(([eye,ic])=>{
+    ctx.save();poly(eye);ctx.fillStyle="#f1ece8";ctx.fill();ctx.clip();
+    const c=pt(ic), r=dist(pt(ic+1),pt(ic+3))/2*1.05;
+    const ig=ctx.createRadialGradient(c[0],c[1],r*.1,c[0],c[1],r);ig.addColorStop(0,"#1a1a1a");ig.addColorStop(.35,"#2b2b29");ig.addColorStop(.42,"#8fb0a8");ig.addColorStop(.8,"#5d807a");ig.addColorStop(1,"#24403b");
+    ctx.fillStyle=ig;ctx.beginPath();ctx.arc(c[0],c[1],r,0,7);ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,.9)";ctx.beginPath();ctx.arc(c[0]-r*.3,c[1]-r*.3,r*.2,0,7);ctx.fill();
+    const top=pt(eye===L_EYE?386:159);
+    const sg=ctx.createLinearGradient(0,top[1],0,top[1]+fw*.06);sg.addColorStop(0,"rgba(0,0,0,.35)");sg.addColorStop(1,"rgba(0,0,0,0)");ctx.fillStyle=sg;ctx.fillRect(c[0]-fw,top[1],fw*2,fw*.08);
+    ctx.restore();
+    poly(eye);ctx.strokeStyle="#1c120d";ctx.lineWidth=Math.max(2,fw*.012);ctx.lineJoin="round";ctx.stroke();
+  });
+  ctx.strokeStyle="#241913";ctx.lineCap="round";ctx.lineJoin="round";ctx.lineWidth=fw*.03;
+  line(L_BROW);ctx.stroke();line(R_BROW);ctx.stroke();
+  ctx.strokeStyle="rgba(110,65,50,.35)";ctx.lineWidth=fw*.025;line([168,6,197,195,5]);ctx.stroke();
+  [98,327].forEach(i=>{const p=pt(i);ctx.fillStyle="rgba(60,30,22,.55)";ctx.beginPath();ctx.ellipse(p[0],p[1],fw*.026,fw*.014,0,0,7);ctx.fill()});
+  const nt=pt(4);const hg=ctx.createRadialGradient(nt[0],nt[1]-fw*.02,0,nt[0],nt[1]-fw*.02,fw*.07);hg.addColorStop(0,"rgba(255,255,255,.22)");hg.addColorStop(1,"rgba(255,255,255,0)");ctx.fillStyle=hg;ctx.fillRect(nt[0]-fw*.1,nt[1]-fw*.1,fw*.2,fw*.2);
+  const open=dist(pt(13),pt(14));
+  poly(LIP_O);const lt=pt(0),lb=pt(17);const lg=ctx.createLinearGradient(0,lt[1],0,lb[1]);lg.addColorStop(0,"#b57063");lg.addColorStop(.5,"#9e5a50");lg.addColorStop(1,"#c4837a");ctx.fillStyle=lg;ctx.fill();
+  poly(LIP_I);ctx.fillStyle="#3b1713";ctx.fill();
+  if(open>fw*.02){ctx.save();poly(LIP_I);ctx.clip();const a=pt(13);ctx.fillStyle="#f2eee8";ctx.fillRect(0,a[1],W,open*.55);ctx.restore()}
+  poly(LIP_I);ctx.strokeStyle="rgba(50,20,16,.8)";ctx.lineWidth=Math.max(1.5,fw*.008);ctx.stroke();
+}
+
+function render(){
+  if(running&&vid.readyState>=2&&landmarker){
+    if(vid.currentTime!==lastT){
+      lastT=vid.currentTime;
+      const res=landmarker.detectForVideo(vid,performance.now());
+      lm=res.faceLandmarks&&res.faceLandmarks[0]||null;
+      if(lm&&status.dataset.lock!=='1')status.style.display='none';
+      else if(!lm){status.style.display='block';status.textContent='Show your face to the camera.'}
+    }
+    updateTransform();
+    if(faceMode){drawBackground();if(lm)drawHuman();}
+    else{
+      ctx.save();ctx.setTransform(tr.s,0,0,tr.s,0,0);ctx.fillStyle="#000";ctx.fillRect(0,0,W,H);ctx.restore();
+      ctx.save();ctx.translate(tr.tx+vid.videoWidth*tr.s,tr.ty);ctx.scale(-tr.s,tr.s);ctx.drawImage(vid,0,0);ctx.restore();
+      if(lm){
+        ctx.lineWidth=1;ctx.strokeStyle="rgba(120,220,255,.35)";ctx.beginPath();
+        TESS.forEach(c=>{const a=pt(c.start),b=pt(c.end);ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1])});ctx.stroke();
+        ctx.strokeStyle="#7cf0b5";ctx.lineWidth=2;poly(OVAL);ctx.stroke();poly(LIP_O);ctx.stroke();poly(L_EYE);ctx.stroke();poly(R_EYE);ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(render);
+}
+
+let stream=null;
+$('start').onclick=async()=>{
+  $('start').disabled=true;status.textContent="Loading MediaPipe face model…";
+  try{
+    const fs=await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+    const opts=d=>({baseOptions:{modelAssetPath:"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",delegate:d},runningMode:"VIDEO",numFaces:1});
+    try{landmarker=await FaceLandmarker.createFromOptions(fs,opts("GPU"))}catch(e){landmarker=await FaceLandmarker.createFromOptions(fs,opts("CPU"))}
+    status.textContent="Requesting camera…";
+    const vc={facingMode:"user",width:{ideal:1280},height:{ideal:720}};
+    try{stream=await navigator.mediaDevices.getUserMedia({video:vc,audio:true})}
+    catch(e){stream=await navigator.mediaDevices.getUserMedia({video:vc,audio:false})}
+    vid.srcObject=stream;await vid.play();
+    running=true;["mode","skin","rbtn"].forEach(i=>$(i).disabled=false);
+    status.textContent="Show your face to the camera.";
+  }catch(err){
+    status.textContent="Could not start: "+(err&&err.message?err.message:err)+" (needs internet + camera permission)";
+    $('start').disabled=false;
+  }
+};
+
+$('mode').onclick=()=>{faceMode=!faceMode;tr.init=false;$('mode').textContent="View: "+(faceMode?"Face shape":"Camera + mesh")};
+$('skin').onclick=()=>{skinI=(skinI+1)%SKINS.length};
+
+let rec=null,chunks=[],blobUrl=null,ext="webm",timer=null,t0=0;
+$('rbtn').onclick=()=>{
+  if(rec&&rec.state==="recording"){rec.stop();return}
+  const out=cv.captureStream(30);
+  if(stream)stream.getAudioTracks().forEach(t=>out.addTrack(t));
+  const types=["video/mp4;codecs=avc1","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
+  const mt=types.find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t))||"";
+  ext=mt.startsWith("video/mp4")?"mp4":"webm";
+  chunks=[];
+  try{rec=new MediaRecorder(out,mt?{mimeType:mt,videoBitsPerSecond:6e6}:{})}catch(e){status.style.display='block';status.textContent="Recording not supported in this browser.";return}
+  rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+  rec.onstop=()=>{
+    clearInterval(timer);$('rec').style.display='none';
+    if(blobUrl)URL.revokeObjectURL(blobUrl);
+    blobUrl=URL.createObjectURL(new Blob(chunks,{type:rec.mimeType||"video/"+ext}));
+    $('dl').disabled=false;$('rbtn').textContent="● Record";$('rbtn').classList.remove('danger');
+    status.style.display='block';status.dataset.lock='1';status.textContent="Saved. Tap Download.";
+    setTimeout(()=>{status.dataset.lock='';},2500);
+  };
+  rec.start(250);t0=Date.now();
+  $('rec').style.display='flex';$('rbtn').textContent="■ Stop";$('rbtn').classList.add('danger');$('dl').disabled=true;
+  timer=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);$('t').textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")},250);
+};
+$('dl').onclick=()=>{
+  if(!blobUrl)return;
+  const a=document.createElement('a');a.href=blobUrl;a.download="face-9x16-"+Date.now()+"."+ext;document.body.appendChild(a);a.click();a.remove();
+};
+requestAnimationFrame(render);
+</script>
+</body>
+</html>
