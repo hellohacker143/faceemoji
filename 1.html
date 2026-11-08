@@ -13,6 +13,7 @@ canvas{width:100%;height:100%;display:block}
 #hud{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;padding:12px;pointer-events:none;font-size:.85rem}
 #rec{background:rgba(0,0,0,.55);padding:5px 10px;border-radius:20px;display:none;align-items:center;gap:6px}
 #rec i{width:9px;height:9px;border-radius:50%;background:#ff3b30;animation:b 1s infinite}
+#shape{margin-left:auto;background:rgba(0,0,0,.62);padding:7px 11px;border:1px solid rgba(255,255,255,.2);border-radius:20px;font-weight:600;letter-spacing:.02em}
 @keyframes b{50%{opacity:.2}}
 #status{position:absolute;left:12px;right:12px;bottom:14px;text-align:center;background:rgba(0,0,0,.6);padding:8px 12px;border-radius:12px;font-size:.9rem}
 .bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:420px}
@@ -26,7 +27,7 @@ button:focus-visible{outline:2px solid #8ab4ff;outline-offset:2px}
 <body>
 <div class="stage">
   <canvas id="c" width="720" height="1280"></canvas>
-  <div id="hud"><span id="rec"><i></i><b id="t">00:00</b></span></div>
+  <div id="hud"><span id="rec"><i></i><b id="t">00:00</b></span><span id="shape">Face shape: waiting</span></div>
   <div id="status">Press “Start camera” to begin live capture.</div>
 </div>
 <div class="bar">
@@ -46,6 +47,7 @@ const cv=document.getElementById('c'), ctx=cv.getContext('2d');
 const vid=document.getElementById('v'), $=id=>document.getElementById(id);
 const status=$('status');
 let landmarker=null, running=false, faceMode=true, lastT=-1, lm=null;
+let faceShape="Detecting…", shapeConfidence="";
 const tr={s:1,tx:0,ty:0,init:false};
 
 const SKINS=[["#f3cfb3","#e0ab88","#b98462"],["#e2b08b","#c98f69","#a26e4d"],["#c48a64","#a56c47","#7f4f35"],["#8d5a3e","#704531","#4d2d1f"]];
@@ -64,6 +66,46 @@ const pt=i=>{const p=lm[i];return [(1-p.x)*vid.videoWidth*tr.s+tr.tx, p.y*vid.vi
 const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 function poly(ids){ctx.beginPath();ids.forEach((id,k)=>{const [x,y]=pt(id);k?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.closePath()}
 function line(ids){ctx.beginPath();ids.forEach((id,k)=>{const [x,y]=pt(id);k?ctx.lineTo(x,y):ctx.moveTo(x,y)})}
+
+// Estimate face shape from normalized facial proportions. Best results come from a
+// straight-on face with a neutral expression; this is an approximate visual guide.
+function recognizeFaceShape(){
+  if(!lm)return {name:"Waiting for face",confidence:""};
+  const d=(a,b)=>Math.hypot(lm[a].x-lm[b].x,lm[a].y-lm[b].y);
+  const cheek=d(234,454), forehead=d(127,356), jaw=d(172,397), length=d(10,152);
+  if(!cheek||!length)return {name:"Analyzing…",confidence:""};
+  const f=forehead/cheek, j=jaw/cheek, r=length/cheek;
+  let name;
+  if(r>1.52) name="Oblong";
+  else if(f>1.02&&j<.78) name="Heart";
+  else if(f<.78&&j<.82) name="Diamond";
+  else if(j>.88&&r<1.38) name="Square";
+  else if(r<1.27&&j>.78&&f>.78) name="Round";
+  else if(r>=1.27&&r<=1.52&&f>=.82&&j>=.72) name="Oval";
+  else if(j<.76) name="Heart";
+  else name="Oval";
+  return {name,confidence:"Approximate"};
+}
+
+function updateShapeLabel(){
+  const result=recognizeFaceShape();
+  faceShape=result.name;shapeConfidence=result.confidence;
+  const el=$('shape');
+  if(el)el.textContent="Face shape: "+faceShape;
+}
+
+function drawShapeTag(){
+  const label="FACE SHAPE  •  "+faceShape.toUpperCase();
+  ctx.save();
+  ctx.font="600 20px Segoe UI, Arial, sans-serif";
+  const w=ctx.measureText(label).width+34;
+  ctx.fillStyle="rgba(12,15,20,.72)";
+  ctx.beginPath();ctx.roundRect((W-w)/2,34,w,48,24);ctx.fill();
+  ctx.strokeStyle="rgba(255,255,255,.28)";ctx.lineWidth=1;ctx.stroke();
+  ctx.fillStyle="#fff";ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillText(label,W/2,58);
+  ctx.restore();
+}
 
 function updateTransform(){
   const vw=vid.videoWidth, vh=vid.videoHeight; if(!vw)return;
@@ -139,11 +181,13 @@ function render(){
       lastT=vid.currentTime;
       const res=landmarker.detectForVideo(vid,performance.now());
       lm=res.faceLandmarks&&res.faceLandmarks[0]||null;
+      if(lm){updateShapeLabel();}
+      else{$('shape').textContent="Face shape: waiting";}
       if(lm&&status.dataset.lock!=='1')status.style.display='none';
       else if(!lm){status.style.display='block';status.textContent='Show your face to the camera.'}
     }
     updateTransform();
-    if(faceMode){drawBackground();if(lm)drawHuman();}
+    if(faceMode){drawBackground();if(lm){drawHuman();drawShapeTag();}}
     else{
       ctx.save();ctx.setTransform(tr.s,0,0,tr.s,0,0);ctx.fillStyle="#000";ctx.fillRect(0,0,W,H);ctx.restore();
       ctx.save();ctx.translate(tr.tx+vid.videoWidth*tr.s,tr.ty);ctx.scale(-tr.s,tr.s);ctx.drawImage(vid,0,0);ctx.restore();
